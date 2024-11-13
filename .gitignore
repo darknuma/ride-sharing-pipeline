@@ -1,0 +1,10 @@
+.devcontainer
+.venv
+__pycache__
+requirement.txt
+logs
+.env
+plugins 
+wait-for-it.sh
+setup.sh 
+config

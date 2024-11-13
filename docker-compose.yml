@@ -1,0 +1,309 @@
+version: '3.8'
+
+services:
+
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Kafka and Zookeeper for stream processing
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181"
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'ruok' | nc localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  kafka:
+    image: bitnami/kafka:latest
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      - zookeeper
+    ports:
+       - "127.0.0.1:39092:9092"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server kafka:9092 --list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    environment:
+      - KAFKA_BROKERCONNECT=kafka:9092
+      - SERVER_PORT=9001
+      - JVM_OPTS=-Xms32M -Xmx64M
+      - SERVER_SERVLET_CONTEXTPATH=/
+    ports:
+      - "39001:9001"
+    depends_on:
+      - kafka
+
+  # Spark Cluster (Master and Worker)
+  spark:
+    image: bitnami/spark:latest
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark
+      - SPARK_MASTER_WEBUI_PORT=8050
+    ports:
+      - "7077:7077"
+      - "8050:8050"
+    volumes:
+     - spark_data:/bitnami/spark
+
+  spark-worker:
+    image: bitnami/spark:latest
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+      - SPARK_WORKER_WEBUI_PORT=8051
+    depends_on:
+      - spark
+    ports:
+      - "8051:8051"
+    volumes:
+     - spark_data:/bitnami/spark
+
+  # Apache Pinot for Real-Time Analytics
+  pinot-controller:
+    image: apachepinot/pinot:latest
+    command: "StartController -zkAddress zookeeper:2181"
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "39000:9000"
+    environment:
+      - JAVA_OPTS=-Xmx1G -Xms1G
+      - PINOT_ROOT_DIR=/opt/pinot/data
+    volumes:
+      - pinot_data:/opt/pinot/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  pinot-broker:
+    image: apachepinot/pinot:latest
+    command: "StartBroker -zkAddress zookeeper:2181"
+    depends_on:
+      pinot-controller:
+        condition: service_healthy
+    ports:
+      - "8099:8099"
+    environment:
+      - JAVA_OPTS=-Xmx1G -Xms1G
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8099/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  pinot-server:
+    image: apachepinot/pinot:latest
+    command: "StartServer -zkAddress zookeeper:2181"
+    depends_on:
+      pinot-controller:
+        condition: service_healthy
+    environment:
+      - JAVA_OPTS=-Xmx2G -Xms2G
+    volumes:
+      - pinot_data:/opt/pinot/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8098/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+
+  pinot-minion:
+    image: apachepinot/pinot:latest
+    command: "StartMinion -zkAddress zookeeper:2181"
+    depends_on:
+      pinot-controller:
+        condition: service_healthy
+    environment:
+      - JAVA_OPTS=-Xmx1G -Xms1G
+
+
+  # Apache Superset for Data Visualization
+  superset:
+    image: apache/superset:latest
+    environment:
+      - SUPERSET_LOAD_EXAMPLES=yes
+      - SUPERSET_ADMIN_USERNAME=admin
+      - SUPERSET_ADMIN_PASSWORD=admin
+      - SUPERSET_DATABASE_PASSWORD=admin
+      - SUPERSET_DATABASE_USER=admin
+      - SUPERSET_DATABASE_NAME=superset
+    depends_on:
+      pinot-controller:
+        condition: service_healthy
+    ports:
+      - "28088:8088"  # Changed to standard Superset port
+    volumes:
+      - ./superset:/app/pythonpath
+      - superset_home:/app/superset_home
+    command:
+      - /bin/bash
+      - -c
+      - |
+        superset db upgrade
+        superset fab create-admin \
+            --username admin \
+            --firstname Superset \
+            --lastname Admin \
+            --email admin@superset.com \
+            --password admin
+        superset init
+        superset set-database-uri --database-name pinot --uri pinot://pinot-broker:8099/
+        /usr/bin/run-server.sh
+
+  # Airflow services (Webserver, Scheduler, Triggerer, etc.)
+  airflow-webserver:
+    image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.8.0-python3.10}
+    command: ["airflow", "webserver"]
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow  # Using SQLite for simplicity
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+      AIRFLOW__CORE_TEST: 'true'
+      AIRFLOW__CORE__TEST_CONNECTION: 'enabled'
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+      AIRFLOW_CONN_KAFKA_DEFAULT: 'kafka://kafka:9092'
+      AIRFLOW_HOME: /opt/airflow
+      JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+      SPARK_HOME: /opt/spark
+      
+      
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-./airflow}/dags:/opt/airflow/dags
+      - ${AIRFLOW_PROJ_DIR:-./airflow}/logs:/opt/airflow/logs
+      - ${AIRFLOW_PROJ_DIR:-./airflow}/config:/opt/airflow/config
+      - ${AIRFLOW_PROJ_DIR:-./airflow}/plugins:/opt/airflow/plugins
+      - ${AIRFLOW_PROJ_DIR:-./airflow}/requirements.txt:/opt/airflow/requirements.txt
+      - spark_home:/opt/spark
+    ports:
+      - "8080:8080"
+
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+      
+
+  airflow-scheduler:
+    image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.8.0-python3.10}
+    command: ["airflow", "scheduler"]
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW_CONN_KAFKA_DEFAULT: 'kafka://kafka:9092'
+      AIRFLOW_HOME: /opt/airflow
+      JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+      SPARK_HOME: /opt/spark
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-./airflow}/dags:/opt/airflow/dags
+      - ${AIRFLOW_PROJ_DIR:-./airflow}/logs:/opt/airflow/logs
+      - ${AIRFLOW_PROJ_DIR:-./airflow}/config:/opt/airflow/config
+      - ${AIRFLOW_PROJ_DIR:-./airflow}/plugins:/opt/airflow/plugins
+      - spark_home:/opt/spark
+    
+    
+     
+    
+    depends_on:
+      - airflow-webserver
+    restart: always
+
+  airflow-triggerer:
+    image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.8.0}
+    command: triggerer
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW_CONN_KAFKA_DEFAULT: 'kafka://kafka:9092'
+      AIRFLOW_HOME: /opt/airflow
+      JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+      SPARK_HOME: /opt/spark
+
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-./airflow}/dags:/opt/airflow/dags
+      - ${AIRFLOW_PROJ_DIR:-./airflow}/logs:/opt/airflow/logs
+      - ${AIRFLOW_PROJ_DIR:-./airflow}/config:/opt/airflow/config
+      - ${AIRFLOW_PROJ_DIR:-./airflow}/plugins:/opt/airflow/plugins
+      - spark_home:/opt/spark
+
+
+    depends_on:
+      - airflow-scheduler
+
+    restart: always
+
+    
+
+  # Airflow initialization service (for Airflow setup)
+  airflow-init:
+    image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.8.0-python3.10}
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        sleep 20
+        airflow db migrate
+        airflow users create \
+          --username admin \
+          --password admin \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@example.com
+        exec /entrypoint airflow version
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      PIP_ADDITIONAL_REQUIREMENTS: "apache-airflow-providers-apache-kafka==1.5.0,apache-airflow-providers-apache-pinot==4.5.0,apache-airflow-providers-apache-spark==4.8.0" 
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-./airflow}:/sources
+      
+
+
+volumes:
+  postgres_data:
+  spark_data:
+  pinot_data:
+  superset_home: 
+  spark_home:
+      
+   
