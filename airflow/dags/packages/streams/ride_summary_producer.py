@@ -9,7 +9,7 @@ from kafka import KafkaProducer
 
 producer = KafkaProducer(
     value_serializer=lambda msg: json.dumps(msg).encode('utf-8'),
-    bootstrap_servers=['kafka:9092']
+    bootstrap_servers=['localhost:9092']
 )
 
 TOPIC_NAME = "event_types"

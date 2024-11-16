@@ -14,8 +14,6 @@ apache-airflow-providers-apache-pinot==4.5.0
 # Postgres
 apache-airflow-providers-postgres==5.13.1
 
-# Additional libraries
-pandas==2.2.3
-numpy==2.1.3
-requests==2.31.0
-pyarrow==18.0.0
+fastavro 
+
+apache-airflow==2.8.0

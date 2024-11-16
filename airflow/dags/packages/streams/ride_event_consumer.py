@@ -2,6 +2,7 @@ from kafka import KafkaConsumer
 import fastavro
 from io import BytesIO
 
+topic_name = "", 
 avro_schema = {
     "type": "record",
     "name": "Ride",
@@ -25,23 +26,22 @@ def deserialize_avro(data, schema):
     reader = fastavro.reader(buffer, schema)
     return next(reader)
 
-def consume_rides(topic_name):
+def consume_rides(**kwargs):
+    topic_name = kwargs.get('topic_name')  # Get the topic name from kwargs
     consumer = KafkaConsumer(
-        topic_name,
+        topic_name,  # Use the actual topic name here
         bootstrap_servers=['kafka:9092'],
         auto_offset_reset='earliest',
         enable_auto_commit=True,
         group_id='ride-consumers',
-        value_deserializer=lambda x: deserialize_avro(x, avro_schema) 
+        value_deserializer=lambda x: deserialize_avro(x, avro_schema)
     )
 
     for message in consumer:
         ride_data = message.value
         print(f"Consumed ride: {ride_data['ride_id']} - {ride_data['ride_type']} at {ride_data['start_time']}")
-        
-        
-
     consumer.close()
 
-if __name__ == "__main__":
-    consume_rides('ride-events')
+
+# if __name__ == "__main__":
+#     consume_rides('ride-events')

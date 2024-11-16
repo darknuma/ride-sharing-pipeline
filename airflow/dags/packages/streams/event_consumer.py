@@ -16,5 +16,5 @@ def read_events():
         print(m.value)
 
 
-if __name__ == "__main__":
-    read_events()
+# if __name__ == "__main__":
+#     read_events()

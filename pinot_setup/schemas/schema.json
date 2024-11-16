@@ -1,0 +1,28 @@
+{
+    "schemaName": "ride_events",
+    "primaryKeyColumns": ["ride_id"],
+    "dimensionFieldSpecs": [
+      {"name": "ride_id", "dataType": "STRING"},
+      {"name": "start_time", "dataType": "LONG"},
+      {"name": "end_time", "dataType": "LONG"},
+      {"name": "distance", "dataType": "DOUBLE"},
+      {"name": "city", "dataType": "STRING"},
+      {"name": "ride_type", "dataType": "STRING"},
+      {"name": "duration_minutes", "dataType": "INT"},  
+      {"name": "driver_id", "dataType": "STRING"},
+      {"name": "rider_id", "dataType": "STRING"}
+    ],
+    "metricFieldSpecs": [
+        {"name": "fare_usd", "dataType": "FLOAT"},
+        {"name": "distance_miles", "dataType": "FLOAT"}
+    ],
+    "dateTimeFieldSpecs": [
+      {
+        "name": "ingestion_time",
+        "dataType": "LONG",
+        "format": "1:MILLISECONDS:EPOCH",
+        "granularity": "1:MILLISECONDS"
+      }
+    ]
+  }
+  

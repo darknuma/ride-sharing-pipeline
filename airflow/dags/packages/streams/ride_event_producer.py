@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from kafka import KafkaProducer
 import random
 from dataclasses import dataclass, asdict
-import fastavro
+import fastavro 
 from io import BytesIO
 
 CITIES = ["New York City", "Buffalo", "Rochester", "Yonkers",
@@ -92,5 +92,5 @@ def main():
 
     producer.close()
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
