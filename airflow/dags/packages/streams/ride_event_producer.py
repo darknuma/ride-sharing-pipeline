@@ -84,7 +84,7 @@ def produce_rides(producer, topic_name, generator, schema, rides_per_minute=60):
         time.sleep(60 / rides_per_minute)
 
 def main():
-    producer = KafkaProducer(bootstrap_servers=['kafka:9092'])
+    producer = KafkaProducer(bootstrap_servers=['kafka-broker-1:9092', 'kafka-broker-2:9093'])
     topic_name = 'ride-events'
 
     generator = RideGenerator()

@@ -1,6 +1,7 @@
 {
   "tableName": "ride_events",
   "tableType": "REALTIME",
+ 
   "segmentsConfig": {
     "timeColumnName": "ingestion_time",
     "timeType": "MILLISECONDS",
@@ -21,7 +22,7 @@
       "stream.kafka.topic.name": "ride-events",
       "stream.kafka.decoder.class.name": "org.apache.pinot.plugin.stream.kafka.KafkaAvroMessageDecoder",
       "stream.kafka.consumer.factory.class.name": "org.apache.pinot.plugin.stream.kafka20.KafkaConsumerFactory",
-      "stream.kafka.broker.list": "kafka:9092",
+      "stream.kafka.broker.list": ["kafka-broker-1:9092", "kafka-broker-2:9093"],
       "stream.kafka.consumer.prop.auto.offset.reset": "smallest",
       "realtime.segment.flush.threshold.time": "24h"
 
