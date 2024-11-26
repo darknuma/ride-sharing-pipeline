@@ -101,7 +101,7 @@ services:
       AIRFLOW__WEBSERVER__SECRET_KEY: 'your-secret-key-here'
       AIRFLOW_CONN_KAFKA_DEFAULT: '{"conn_type": "kafka", "host": "kafka-broker-1", "port": 9092}'
       AIRFLOW_CONN_SPARK_DEFAULT: '{"conn_type": "spark", "host": "spark://spark", "port": "7077", "extra": {"queue": "default"}}'
-      JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+      JAVA_HOME: /usr/lib/jvm/msopenjdk-11-amd64
       PYTHONPATH: ${PYTHONPATH:-}:/opt/spark/python:/opt/spark/python/lib/py4j-0.10.9.7-src.zip
       SPARK_CLASSPATH: /opt/spark/jars/*
       HADOOP_CONF_DIR: /opt/airflow/config/hadoop
@@ -113,7 +113,8 @@ services:
       - ${AIRFLOW_PROJ_DIR:-./airflow}/logs:/opt/airflow/logs
       - ${AIRFLOW_PROJ_DIR:-./airflow}/config:/opt/airflow/config
       - ${AIRFLOW_PROJ_DIR:-./airflow}/plugins:/opt/airflow/plugins
-      - spark_data:/home/airflow
+      - ${AIRFLOW_PROJ_DIR:-./airflow}/spark_delta:/opt/airflow
+      
     ports:
       - "8080:8080"
     depends_on:
@@ -143,9 +144,10 @@ services:
       HADOOP_CONF_DIR: /opt/airflow/config/hadoop
       DELTA_SPARK_VERSION: 2.1.0
       PYSPARK_SUBMIT_ARGS: "--packages io.delta:delta-core_2.12:2.1.0,org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.apache.spark:spark-avro_2.12:3.5.3 pyspark-shell"
-      JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
-      # SPARK_HOME: /home/airflow
+      JAVA_HOME: /usr/lib/jvm/msopenjdk-11-amd64
+      SPARK_HOME: /home/airflow/.local/lib/python3.10/site-packages
       AIRFLOW_HOME: /opt/airflow
+      
       # Add provider packages if needed
       _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-apache-airflow-providers-apache-spark apache-airflow-providers-apache-kafka apache-airflow-providers-apache-pinot}
     volumes:
@@ -154,6 +156,8 @@ services:
       - ${AIRFLOW_PROJ_DIR:-./airflow}/config:/opt/airflow/config
       - ${AIRFLOW_PROJ_DIR:-./airflow}/plugins:/opt/airflow/plugins
       - spark_data:/home/airflow
+      - ${AIRFLOW_PROJ_DIR:-./airflow}/spark_delta:/opt/airflow
+
     depends_on:
       - postgres
       - airflow-webserver
@@ -176,7 +180,7 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
       AIRFLOW_CONN_KAFKA_DEFAULT: '{"conn_type": "kafka", "host": "kafka-broker-1", "port": 9092}'
       AIRFLOW_CONN_SPARK_DEFAULT: '{"conn_type": "spark", "host": "spark://spark", "port": "7077", "extra": {"queue": "default"}}'
-      JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+      JAVA_HOME: /usr/lib/jvm/msopenjdk-11-amd64
       PYTHONPATH: ${PYTHONPATH:-}:/opt/spark/python:/opt/spark/python/lib/py4j-0.10.9.7-src.zip
       SPARK_CLASSPATH: /opt/spark/jars/*
       HADOOP_CONF_DIR: /opt/airflow/config/hadoop
@@ -189,6 +193,8 @@ services:
       - ${AIRFLOW_PROJ_DIR:-./airflow}/logs:/opt/airflow/logs
       - ${AIRFLOW_PROJ_DIR:-./airflow}/config:/opt/airflow/config
       - ${AIRFLOW_PROJ_DIR:-./airflow}/plugins:/opt/airflow/plugins
+      - ${AIRFLOW_PROJ_DIR:-./airflow}/spark_delta:/opt/airflow
+      
       - spark_data:/home/airflow
     depends_on:
       - airflow-scheduler

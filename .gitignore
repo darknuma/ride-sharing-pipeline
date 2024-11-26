@@ -9,3 +9,5 @@ wait-for-it.sh
 setup.sh 
 config
 .airflow
+lol.py
+

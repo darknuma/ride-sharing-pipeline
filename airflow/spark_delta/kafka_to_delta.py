@@ -12,12 +12,16 @@ logger = logging.getLogger(__name__)
 def create_spark_session():
     return (SparkSession.builder
             .appName("KafkaToDeltaStream")
-            .config("org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3","org.apache.spark:spark-avro_2.12:3.5.3", "io.delta:delta-core_2.12:2.1.0")
+            .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,"
+                                           "org.apache.spark:spark-avro_2.12:3.5.3,"
+                                           "io.delta:delta-core_2.12:2.1.0,"
+                                           "org.apache.kafka:kafka-clients:3.5.2:3.5.3")
             .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
             .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
             .getOrCreate())
-# $ spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.apache.spark:spark-avro_2.12:3.5.3,io.delta:delta-core_2.12:2.1.0 kafka_to_delta.py
-# Define the Avro schema as a string
+
+
+
 avro_schema = """
 {
   "type": "record",
@@ -42,36 +46,20 @@ def read_from_kafka(spark):
             .readStream
             .format("kafka")
             .option("kafka.bootstrap.servers", "kafka-broker-1:9092,kafka-broker-2:9093")
-            .option("subscribe", "ride-events")  # Your topic name
+            .option("subscribe", "ride-events")  
             .option("startingOffsets", "earliest")
             .option("includeHeaders", "true")
             .load())
 
-# def process_kafka_data(df, avro_schema):
-#     """
-#     This function processes Kafka data by deserializing Avro data.
-
-#     :param df: The input DataFrame, where the 'value' column contains Avro data.
-#     :param avro_schema: The Avro schema used for deserialization.
-#     :return: A DataFrame with the deserialized data from Avro format.
-#     """
-#     return (
-#         df
-#         .select(from_avro(col("value"), avro_schema).alias("data"))  # Deserialize Avro data
-#         .select("data.*")  # Flatten the nested data (extract all fields)
-#     )
 
 def process_kafka_data(kafka_df, avro_schema: str):
     """Process Kafka data using provided Avro schema."""
     try:
-        # First, verify the schema is valid
         if not avro_schema or not isinstance(avro_schema, str):
             raise ValueError("Invalid Avro schema provided")
             
-        # Add error handling for the value column
         kafka_df = kafka_df.filter(col("value").isNotNull())
         
-        # Deserialize Avro data with explicit error handling
         processed_df = kafka_df.select(
             from_avro(col("value"), avro_schema).alias("data")
         ).select("data.*")
@@ -99,6 +87,9 @@ def main():
     
     # Read from Kafka
     kafka_df = read_from_kafka(spark)
+
+    kafka_df.isStreaming  # Check if the dataframe is streaming
+    kafka_df.printSchema()  # Print schema to check the fields
     
     # Process the data
     processed_df = process_kafka_data(kafka_df, avro_schema)

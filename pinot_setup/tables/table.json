@@ -20,9 +20,10 @@
       "streamType": "kafka",
       "stream.kafka.consumer.type": "lowlevel",
       "stream.kafka.topic.name": "ride-events",
+      "stream.kafka.decoder.prop.format": "AVRO",
       "stream.kafka.decoder.class.name": "org.apache.pinot.plugin.stream.kafka.KafkaAvroMessageDecoder",
       "stream.kafka.consumer.factory.class.name": "org.apache.pinot.plugin.stream.kafka20.KafkaConsumerFactory",
-      "stream.kafka.broker.list": ["kafka-broker-1:9092", "kafka-broker-2:9093"],
+      "stream.kafka.broker.list": "[kafka-broker-1:9092,kafka-broker-2:9093]",
       "stream.kafka.consumer.prop.auto.offset.reset": "smallest",
       "realtime.segment.flush.threshold.time": "24h"
 
