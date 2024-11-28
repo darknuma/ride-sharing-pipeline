@@ -5,17 +5,15 @@ This might include starting and stopping data streams as needed, managing topic 
 """
 import os
 import sys
-
-# Add the directory containing your custom packages to the PYTHONPATH
-sys.path.append('/home/airflow/dags/packages/streams') 
-
-
 from airflow.plugins_manager import AirflowPlugin
 from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
 from airflow import DAG 
 from datetime import timedelta
-from packages.streams.ride_event_producer import main
+# from packages.streams.ride_event_producer import main
+from packages.streams.ride_event_json import main
+
+sys.path.append('/home/airflow/dags/packages/streams') 
 
 
 TOPIC_NAME = 'ride-events'

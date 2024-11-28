@@ -1,16 +1,12 @@
 FROM apache/airflow:2.8.0-python3.10
 
-# Copy the requirements file for Python dependencies
 COPY ./airflow/requirements.txt /home/requirements.txt
 
-# Install Python dependencies from the requirements file
 RUN pip install -r /home/requirements.txt
 
-# Switch to root user to install system dependencies
 USER root 
 
-# Update the package list and install necessary dependencies
-# Install Java and necessary dependencies
+
 RUN apt-get update \
 && apt-get install -y --no-install-recommends \
     msopenjdk-11 \
@@ -22,16 +18,13 @@ RUN apt-get update \
 && apt-get clean \
 && rm -rf /var/lib/apt/lists/*
 
-# Set JAVA_HOME environment variable for msopenjdk-11
 ENV JAVA_HOME="/usr/lib/jvm/msopenjdk-11-amd64"
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
-# Set up Spark directories
-ENV SPARK_HOME=/opt/spark
-ENV PYTHONPATH="/home/airflow/.local/lib/python3.10/site-packages/pyspark"
+ENV SPARK_HOME="/home/airflow/.local"
+ENV PYTHONPATH="/home/airflow/.local/lib"
 ENV PATH="${SPARK_HOME}/bin:${PATH}"
 
-# Create necessary directories for Spark and other configurations
 RUN mkdir -p "${SPARK_HOME}/jars" \
     && mkdir -p "${SPARK_HOME}/work-dir" \
     && mkdir -p "${SPARK_HOME}/conf" \
@@ -39,7 +32,7 @@ RUN mkdir -p "${SPARK_HOME}/jars" \
     && mkdir -p /tmp/spark-temp
 
 # Set working directory to /opt/spark for Spark installation
-WORKDIR /opt/spark
+WORKDIR /home/airflow/.local
 
 # Download Spark tarball from the official source
 RUN wget -q https://downloads.apache.org/spark/spark-3.5.3/spark-3.5.3-bin-hadoop3.tgz
@@ -54,7 +47,6 @@ RUN wget -q https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10
     && wget -q https://repo1.maven.org/maven2/org/apache/spark/spark-avro_2.12/3.5.3/spark-avro_2.12-3.5.3.jar -P ${SPARK_HOME}/jars \
     && wget -q https://repo1.maven.org/maven2/org/apache/spark/spark-launcher_2.12/3.5.3/spark-launcher_2.12-3.5.3.jar -P ${SPARK_HOME}/jars
 
-# Set proper permissions for the Spark directory and files
 RUN chown -R airflow:root "${SPARK_HOME}" \
     && chmod -R 775 "${SPARK_HOME}" \
     && chown -R airflow:root /tmp/ivy \
@@ -62,11 +54,8 @@ RUN chown -R airflow:root "${SPARK_HOME}" \
     && chown -R airflow:root /tmp/spark-temp \
     && chmod -R 775 /tmp/spark-temp 
 
-# Copy the custom entrypoint script into the container
 COPY ./custom_entrypoint.sh /home/airflow/custom_entrypoint.sh
 
-# Make the custom entrypoint script executable
 RUN chmod +x /home/airflow/custom_entrypoint.sh
 
-# Switch back to the airflow user for running Airflow processes
 USER airflow

@@ -1,73 +1,180 @@
-{
-  "tableName": "ride_events",
-  "tableType": "REALTIME",
+// {
+//   "tableName": "ride_events",
+//   "tableType": "REALTIME",
  
+//   "segmentsConfig": {
+//     "timeColumnName": "ingestion_time",
+//     "timeType": "MILLISECONDS",
+//     "schemaName": "ride_events",
+//     "replicasPerPartition": "1",
+//     "retentionTimeUnit": "DAYS",
+//     "retentionTimeValue": "7"
+//   },
+//   "tenants": {
+//     "broker": "DefaultTenant",
+//     "server": "DefaultTenant"
+//   },
+//   "tableIndexConfig": {
+//     "loadMode": "MMAP",
+//     "streamConfigs": {
+//       "streamType": "kafka",
+//       "stream.kafka.consumer.type": "lowlevel",
+//       "stream.kafka.zk.broker.url": "localhost:2181",
+//       "stream.kafka.topic.name": "ride-events",
+//       "stream.kafka.decoder.prop.format": "AVRO",
+//       "stream.kafka.decoder.class.name": "org.apache.pinot.plugin.inputformat.avro.SimpleAvroMessageDecoder",
+//       "stream.kafka.consumer.factory.class.name": "org.apache.pinot.core.realtime.impl.kafka2.KafkaConsumerFactory",
+//       "stream.kafka.broker.list": "kafka-broker-1:9092",
+//       "stream.kafka.consumer.prop.auto.offset.reset": "smallest",
+//       "realtime.segment.flush.threshold.time": "24h"
+
+//     }
+//   },
+//   "metadata": {
+//     "customConfigs": {}
+//   },
+//   "ingestionConfig": {
+//     "filterConfig": {},
+//     "transformConfig": {
+//       "transformFunctions": []
+//     }
+//   },
+//   "fieldConfigList": [
+//     {
+//       "name": "ride_id",
+//       "encodingType": "RAW",
+//       "indexType": "TEXT"
+//     },
+//     {
+//       "name": "city",
+//       "encodingType": "DICTIONARY",
+//       "indexType": "SORTED"
+//     },
+//     {
+//       "name": "ride_type",
+//       "encodingType": "DICTIONARY",
+//       "indexType": "SORTED"
+//     },
+//     {
+//       "name": "driver_id",
+//       "encodingType": "RAW",
+//       "indexType": "TEXT"
+//     },
+//     {
+//       "name": "rider_id",
+//       "encodingType": "RAW",
+//       "indexType": "TEXT"
+//     },
+//     {
+//       "name": "start_time",
+//       "encodingType": "RAW",
+//       "indexType": "SORTED"
+//     }
+//   ]
+// }
+
+
+// {
+//   "tableName": "RideEvents",
+//   "nullHandlingEnabled": true,
+//   "tableType": "REALTIME",
+//   "segmentsConfig": {
+//     "replication": "2",
+//     "timeColumnName": "start_time",
+//     "schemaName": "RideEvents",
+//     "segmentPushType": "APPEND"
+//   },
+//   "tableIndexConfig": {
+//     "loadMode": "MMAP",
+//     "invertedIndexColumns": ["city", "ride_type", "driver_id", "rider_id"],
+//     "rangeIndexColumns": ["distance_miles", "fare_usd", "duration_minutes"],
+//     "sortedColumn": ["start_time"],
+//     "noDictionaryColumns": ["distance_miles", "fare_usd"],
+//     "bloomFilterColumns": ["ride_id"]
+//   },
+//   "tenants": {
+//     "broker": "defaultBroker",
+//     "server": "defaultServer"
+//   },
+//   "ingestionConfig": {
+//     "transformConfigs": [],
+//     "streamIngestionConfig": {
+//       "streamConfigs": {
+//         "streamType": "kafka",
+//         "stream.kafka.topic.name": "ride-events",
+//         "stream.kafka.zk.broker.url": "localhost:2181",
+//         "stream.kafka.broker.list": "kafka-broker-1:9092,kafka-broker-2:9093",
+//         "stream.kafka.consumer.type": "lowlevel",
+//         "stream.kafka.decoder.class.name": "org.apache.pinot.plugin.stream.kafka.KafkaJSONMessageDecoder",
+//         "stream.kafka.consumer.prop.auto.offset.reset": "smallest",
+//         "stream.kafka.consumer.factory.class.name": "org.apache.pinot.plugin.stream.kafka20.KafkaConsumerFactory"
+//       }
+//     }
+//   },
+//   "metadata": {},
+//   "routing": {
+//     "routingStrategy": "partitioned"
+//   },
+//   "queryConfig": {
+//     "timeoutMs": 30000
+//   },
+//   "validationConfig": {
+//     "segmentPushFrequency": "daily",
+//     "segmentPushType": "APPEND",
+//     "timeColumnName": "start_time",
+//     "schemaName": "RideEvents"
+//   }
+// }
+
+
+{
+  "tableName": "RideEvents",
+  "nullHandlingEnabled": true,
+  "tableType": "REALTIME",
   "segmentsConfig": {
-    "timeColumnName": "ingestion_time",
-    "timeType": "MILLISECONDS",
-    "schemaName": "ride_events",
-    "replicasPerPartition": "1",
-    "retentionTimeUnit": "DAYS",
-    "retentionTimeValue": "7"
+    "replication": "1",
+    "timeColumnName": "start_time",
+    "schemaName": "RideEvents",
+    "segmentPushType": "APPEND"
+  },
+  "tableIndexConfig": {
+    "loadMode": "MMAP",
+    "invertedIndexColumns": ["city", "ride_type", "driver_id", "rider_id"],
+    "rangeIndexColumns": ["distance_miles", "fare_usd", "duration_minutes"],
+    "sortedColumn": ["start_time"],
+    "noDictionaryColumns": ["distance_miles", "fare_usd"],
+    "bloomFilterColumns": ["ride_id"]
   },
   "tenants": {
     "broker": "DefaultTenant",
     "server": "DefaultTenant"
   },
-  "tableIndexConfig": {
-    "loadMode": "MMAP",
-    "streamConfigs": {
-      "streamType": "kafka",
-      "stream.kafka.consumer.type": "lowlevel",
-      "stream.kafka.topic.name": "ride-events",
-      "stream.kafka.decoder.prop.format": "AVRO",
-      "stream.kafka.decoder.class.name": "org.apache.pinot.plugin.stream.kafka.KafkaAvroMessageDecoder",
-      "stream.kafka.consumer.factory.class.name": "org.apache.pinot.plugin.stream.kafka20.KafkaConsumerFactory",
-      "stream.kafka.broker.list": "[kafka-broker-1:9092,kafka-broker-2:9093]",
-      "stream.kafka.consumer.prop.auto.offset.reset": "smallest",
-      "realtime.segment.flush.threshold.time": "24h"
-
-    }
-  },
-  "metadata": {
-    "customConfigs": {}
-  },
   "ingestionConfig": {
-    "filterConfig": {},
-    "transformConfig": {
-      "transformFunctions": []
-    }
-  },
-  "fieldConfigList": [
-    {
-      "name": "ride_id",
-      "encodingType": "RAW",
-      "indexType": "TEXT"
-    },
-    {
-      "name": "city",
-      "encodingType": "DICTIONARY",
-      "indexType": "SORTED"
-    },
-    {
-      "name": "ride_type",
-      "encodingType": "DICTIONARY",
-      "indexType": "SORTED"
-    },
-    {
-      "name": "driver_id",
-      "encodingType": "RAW",
-      "indexType": "TEXT"
-    },
-    {
-      "name": "rider_id",
-      "encodingType": "RAW",
-      "indexType": "TEXT"
-    },
-    {
-      "name": "start_time",
-      "encodingType": "RAW",
-      "indexType": "SORTED"
+    "streamIngestionConfig": {
+      "streamConfigMaps": [
+        {
+          "streamType": "kafka",
+          "stream.kafka.topic.name": "ride-events",
+          "stream.kafka.broker.list": "kafka-broker-1:9092,kafka-broker-2:9093",
+          "stream.kafka.consumer.type": "lowlevel",
+          "stream.kafka.decoder.class.name": "org.apache.pinot.plugin.stream.kafka.KafkaJSONMessageDecoder",
+          "stream.kafka.consumer.prop.auto.offset.reset": "smallest",
+          "stream.kafka.consumer.factory.class.name": "org.apache.pinot.plugin.stream.kafka20.KafkaConsumerFactory"
     }
   ]
+  }
+},
+  "metadata": {},
+  "routing": {
+    "routingStrategy": "partitioned"
+  },
+  "queryConfig": {
+    "timeoutMs": 30000
+  },
+  "validationConfig": {
+    "segmentPushFrequency": "daily",
+    "segmentPushType": "APPEND",
+    "timeColumnName": "start_time",
+    "schemaName": "RideEvents"
+  }
 }

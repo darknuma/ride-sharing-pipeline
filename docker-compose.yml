@@ -23,6 +23,16 @@ services:
       - ALLOW_ANONYMOUS_LOGIN=yes
     ports:
       - "2181:2181"
+    volumes:
+      - zkData1:/data
+      - zkCatalog1:/catalog
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
     healthcheck:
       test: ["CMD-SHELL", "echo 'ruok' | nc localhost 2181"]
       interval: 10s
@@ -75,7 +85,8 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
-
+      
+  # UI for Kafka
   kafdrop:
     image: obsidiandynamics/kafdrop:latest
     environment:
@@ -310,7 +321,7 @@ services:
     ports:
       - "8099:8099"
     environment:
-      JAVA_OPTS: "-Xmx1G -Xms1G"
+      JAVA_OPTS: "-Xmx2G -Xms2G"
     volumes:
       - pinot_data:/var/pinot/broker
     healthcheck:
@@ -426,6 +437,8 @@ services:
       - spark
 volumes:
   postgres_data:
+  zkData1:
+  zkCatalog1:
   spark_data:
   pinot_data:
   superset_home:

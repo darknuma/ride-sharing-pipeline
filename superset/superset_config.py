@@ -1,38 +1,77 @@
-import os
+from sqlalchemy.dialects.postgresql.base import PGDialect
+from sqlalchemy.engine.default import DefaultDialect
+from sqlalchemy.sql import compiler
+from sqlalchemy import types
+import urllib.parse
 
-MAPBOX_API_KEY = os.getenv('MAPBOX_API_KEY', '')
-
-# Pinot connection configuration
-PREFERRED_DATABASES = ['pinot']
-
-# Add Pinot to the databases
-DATABASES = {
-    'pinot': {
-        'allow_csv_upload': False,
-        'allow_ctas': False,
-        'allow_cvas': False,
-        'allow_dml': False,
-        'allow_multi_schema_metadata_fetch': False,
-        'allow_run_async': False,
-        'allows_subquery': True,
-        'disable_data_preview': False,
-        'expose_in_sqllab': True,
-        'force_ctas_schema': None,
-        'parameters': {
-            'broker_host': 'pinot-broker',
-            'broker_port': 8099,
-            'controller_host': 'pinot-controller',
-            'controller_port': 9000,
-        }
+class PinotDialect(DefaultDialect):
+    """SQLAlchemy dialect for Apache Pinot"""
+    
+    name = 'pinot'
+    driver = 'http'
+    
+    # Map Python types to SQLAlchemy types
+    ischema_names = {
+        'STRING': types.String,
+        'INT': types.Integer,
+        'LONG': types.BigInteger,
+        'FLOAT': types.Float,
+        'DOUBLE': types.Float,
+        'BOOLEAN': types.Boolean,
+        'TIMESTAMP': types.DateTime,
+        'JSON': types.JSON
     }
-}
+    
+    @classmethod
+    def dbapi(cls):
+        """Pinot doesn't have a native Python driver, so we'll use requests"""
+        import requests
+        return requests
+    
+    def create_connect_args(self, url):
+        """Convert SQLAlchemy connection URL to Pinot query parameters"""
+        # Parse the connection URL
+        controller_url = url.query.get('controller', '')
+        query_options = {k: v for k, v in url.query.items() if k != 'controller'}
+        
+        connect_args = {
+            'broker_url': f"{url.host}:{url.port}/query",
+            'controller_url': controller_url,
+            'query_params': query_options
+        }
+        
+        return ([], connect_args)
+    
+    def get_pool_class(self, url):
+        """Use SQLAlchemy's QueuePool for connection pooling"""
+        from sqlalchemy.pool import QueuePool
+        return QueuePool
+    
+    def _get_default_schema_name(self, connection):
+        """Return default schema name"""
+        return 'default'
 
-# Cache configuration
-CACHE_CONFIG = {
-    'CACHE_TYPE': 'RedisCache',
-    'CACHE_DEFAULT_TIMEOUT': 300,
-    'CACHE_KEY_PREFIX': 'superset_',
-}
+# Optional: Custom SQL compiler if needed
+class PinotCompiler(compiler.SQLCompiler):
+    def visit_select(self, select, **kw):
+        """Customize SELECT statement compilation if required"""
+        return super().visit_select(select, **kw)
 
-# Additional security settings
-SECRET_KEY = os.getenv('SUPERSET_SECRET_KEY', 'your_secure_key_here')
+# Registration decorator for SQLAlchemy entry points
+def register_dialect():
+    from sqlalchemy.dialects import registry
+    registry.register("pinot.http", "pinot_dialect", "PinotDialect")
+
+# Example usage function
+def example_connection():
+    from sqlalchemy import create_engine
+    
+    # Connection string format
+    connection_string = (
+        "pinot+http://localhost:8099/query"
+        "?controller=http://localhost:9000"
+    )
+    
+    engine = create_engine(connection_string)
+    return engine
+

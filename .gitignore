@@ -10,4 +10,7 @@ setup.sh
 config
 .airflow
 lol.py
+lola.py 
+/airflow/spark_delta/*
+!/airflow/spark_delta/kafka_to_delta.py
 
